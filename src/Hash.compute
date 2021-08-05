@@ -1,0 +1,140 @@
+#pragma kernel Initialize
+#pragma kernel HashInsertKern
+#pragma kernel HashLookupKern
+#pragma kernel HashDeleteKern
+
+struct KeyValue
+{
+	uint key;
+	uint value;
+};
+
+RWStructuredBuffer<KeyValue> HashBuffer;
+RWStructuredBuffer<KeyValue> ValuesBuffer;
+
+//Set the sentinel value
+static uint s_empty = 0xffffffff;
+
+//These values are set by the Test class
+extern uint hashBufferSize;
+extern uint bufferSize;
+extern uint random;
+
+
+uint hash(uint k)
+{
+    k ^= k >> 16;
+    k *= 0x85ebca6b;
+    k ^= k >> 13;
+    k *= 0xc2b2ae35;
+    k ^= k >> 16;
+    return k & (hashBufferSize - 1);
+}
+
+void HashInsert(RWStructuredBuffer<KeyValue> _hashBuffer, uint key, uint value)
+{
+    uint slot = hash(key);
+
+    uint prev;
+
+    while(true)
+    {
+        InterlockedCompareExchange(_hashBuffer[slot].key, s_empty, key, prev);
+
+        if (prev == s_empty || prev == key)
+        {
+            _hashBuffer[slot].value = value;
+            return;
+        }
+
+        slot = (slot + 1) & (hashBufferSize - 1);
+    }
+}
+
+uint HashLookup(RWStructuredBuffer<KeyValue> _hashBuffer, uint key)
+{
+    uint slot = hash(key);
+
+    while (true)
+    {
+        if (_hashBuffer[slot].key == key)
+        {
+            return _hashBuffer[slot].value;
+        }
+        if (_hashBuffer[slot].key == s_empty)
+        {
+            return s_empty;
+        }
+
+        slot = (slot + 1) & (hashBufferSize - 1);
+    }
+}
+
+void HashDelete(RWStructuredBuffer<KeyValue> _hashBuffer, uint key)
+{
+    uint slot = hash(key);
+
+    while (true)
+    {
+        if (_hashBuffer[slot].key == key)
+        {
+            _hashBuffer[slot].value = s_empty;
+            return;
+        }
+        if (_hashBuffer[slot].key == s_empty)
+        {
+            return;
+        }
+
+        slot = (slot + 1) & (hashBufferSize - 1);
+    }
+}
+
+float rand(float n)
+{
+    return frac(sin(n + random) * 43758.5453);
+}
+
+//Set the Hash Buffer keys and values to the proper state, and fill the value buffer with random numbers.
+[numthreads(1024, 1, 1)]
+void Initialize(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < hashBufferSize)
+    {
+        HashBuffer[id.x].key = s_empty;
+        HashBuffer[id.x].value = s_empty;
+
+        if (id.x < bufferSize)
+        {
+            ValuesBuffer[id.x].key = rand(id.x);
+            ValuesBuffer[id.x].value = rand(ValuesBuffer[id.x].key);
+        }
+    }
+}
+
+[numthreads(1024,1,1)]
+void HashInsertKern(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < bufferSize)
+    {
+        HashInsert(HashBuffer, ValuesBuffer[id.x].key, ValuesBuffer[id.x].value);
+    }
+}
+
+[numthreads(1024, 1, 1)]
+void HashLookupKern(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < bufferSize)
+    {
+        ValuesBuffer[id.x].value = HashLookup(HashBuffer, ValuesBuffer[id.x].key);
+    }
+}
+
+[numthreads(1024, 1, 1)]
+void HashDeleteKern(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < bufferSize)
+    {
+        HashDelete(HashBuffer, ValuesBuffer[id.x].key);
+    }
+}
