@@ -1,2 +1,2 @@
 # SimpleComputeShaderHashTable
-A Compute Shader Version of David Farell's HashTable, which in turn, is based off of Cliff Click's. 
+A Compute Shader Version of Cliff Click's and subsequently David Farell's HashTable.
