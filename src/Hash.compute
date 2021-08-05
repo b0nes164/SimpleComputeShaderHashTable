@@ -18,7 +18,8 @@ static uint s_empty = 0xffffffff;
 //These values are set by the Test class
 extern uint hashBufferSize;
 extern uint bufferSize;
-extern uint random;
+extern float random;
+extern float randomTwo;
 
 
 uint hash(uint k)
@@ -35,10 +36,12 @@ void HashInsert(RWStructuredBuffer<KeyValue> _hashBuffer, uint key, uint value)
 {
     uint slot = hash(key);
 
-    uint prev;
+    
 
     while(true)
     {
+        uint prev;
+
         InterlockedCompareExchange(_hashBuffer[slot].key, s_empty, key, prev);
 
         if (prev == s_empty || prev == key)
@@ -90,9 +93,17 @@ void HashDelete(RWStructuredBuffer<KeyValue> _hashBuffer, uint key)
     }
 }
 
-float rand(float n)
+uint rand(uint s, uint seed)
 {
-    return frac(sin(n + random) * 43758.5453);
+    s += seed;
+    s ^= 2747636419u;
+    s *= 2654435769u;
+    s ^= s >> 16;
+    s *= 2654435769u;
+    s ^= s >> 16;
+    s *= 2654435769u;
+    s--;
+    return s;
 }
 
 //Set the Hash Buffer keys and values to the proper state, and fill the value buffer with random numbers.
@@ -106,8 +117,8 @@ void Initialize(uint3 id : SV_DispatchThreadID)
 
         if (id.x < bufferSize)
         {
-            ValuesBuffer[id.x].key = rand(id.x);
-            ValuesBuffer[id.x].value = rand(ValuesBuffer[id.x].key);
+            ValuesBuffer[id.x].key = rand(id.x, random);
+            ValuesBuffer[id.x].value = rand(id.x, randomTwo);
         }
     }
 }

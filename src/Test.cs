@@ -12,7 +12,7 @@ public class Test : MonoBehaviour
 
     private ComputeBuffer valuesBuffer;
     private ComputeBuffer hashBuffer;
-    private int bufferSize = 32000000;
+    private int bufferSize = 1000;
     private int hashBufferSize;
 
     private int initKernel;
@@ -31,10 +31,9 @@ public class Test : MonoBehaviour
         //Find the smallest power of 2 equal to or larger than input buffer size, because the size of the hashBuffer must always be a power of two.
         hashBufferSize = SizeToPow(bufferSize);
         
-        //Initialize the bufferSize fields and the random seed.
+        //Initialize the bufferSize fields 
         compute.SetInt("hashBufferSize", hashBufferSize);
         compute.SetInt("bufferSize", bufferSize);
-        compute.SetInt("random", (int)Random.Range(0, 1000));
 
         //Get the int associated with each kernel.
         initKernel = compute.FindKernel("Initialize");
@@ -60,6 +59,10 @@ public class Test : MonoBehaviour
     //Dispatches the kernels for initialization, insertion, lookup, delete, in that order.
     private void HashTest()
     {
+        //set the random seeds
+        compute.SetInt("random", (int)Random.Range(0, 4000000000));
+        compute.SetInt("randomTwo", (int)Random.Range(0, 4000000000));
+
         //dispatch the Initialize kernel, which sets all indexes on the HashBuffer to the empty state, and fills the ValueBuffer with random uints.
         compute.SetBuffer(initKernel, "HashBuffer", hashBuffer);
         compute.SetBuffer(initKernel, "ValuesBuffer", valuesBuffer);
@@ -105,7 +108,6 @@ public class Test : MonoBehaviour
 
         //Dispatch the delete kernel.
         time = Time.realtimeSinceStartup;
-
         compute.SetBuffer(deleteKernel, "HashBuffer", hashBuffer);
         compute.SetBuffer(deleteKernel, "ValuesBuffer", valuesBuffer);
         compute.Dispatch(deleteKernel, Mathf.CeilToInt(bufferSize / 1024f), 1, 1);
@@ -124,6 +126,7 @@ public class Test : MonoBehaviour
                 if (test3[i] != 0xffffffff)
                 {
                     Debug.Log("Deletion error at " + i);
+                    Debug.Log(test3[i]);
                 }
             }
         }
