@@ -9,10 +9,10 @@ public class Test : MonoBehaviour
 
     [SerializeField]
     private bool validation;
-
+    [SerializeField]
+    private int bufferSize;
     private ComputeBuffer valuesBuffer;
     private ComputeBuffer hashBuffer;
-    private int bufferSize = 1000;
     private int hashBufferSize;
 
     private int initKernel;
@@ -20,6 +20,7 @@ public class Test : MonoBehaviour
     private int lookupKernel;
     private int deleteKernel;
 
+    System.Random rand = new System.Random();
     private float time;
 
     private uint[] test;
@@ -30,7 +31,7 @@ public class Test : MonoBehaviour
     {
         //Find the smallest power of 2 equal to or larger than input buffer size, because the size of the hashBuffer must always be a power of two.
         hashBufferSize = SizeToPow(bufferSize);
-        
+
         //Initialize the bufferSize fields 
         compute.SetInt("hashBufferSize", hashBufferSize);
         compute.SetInt("bufferSize", bufferSize);
@@ -60,8 +61,8 @@ public class Test : MonoBehaviour
     private void HashTest()
     {
         //set the random seeds
-        compute.SetInt("random", (int)Random.Range(0, 4000000000));
-        compute.SetInt("randomTwo", (int)Random.Range(0, 4000000000));
+        compute.SetInt("random", rand.Next());
+        compute.SetInt("randomTwo", rand.Next());
 
         //dispatch the Initialize kernel, which sets all indexes on the HashBuffer to the empty state, and fills the ValueBuffer with random uints.
         compute.SetBuffer(initKernel, "HashBuffer", hashBuffer);
