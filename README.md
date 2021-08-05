@@ -1,5 +1,6 @@
 # SimpleComputeShaderHashTable
-A Unity Compute Shader Version of Cliff Click's and subsequently David Farell's hash table.
+A Unity Compute Shader Version of David Farell's hash table.
+
 ![hash](https://user-images.githubusercontent.com/68340554/128312010-7b256383-3c02-4dae-83fb-014a025cc708.PNG)
 # About This Project
 This project is a Unity Compute Shader implementation of a [simple GPU hash table written by David Farell](https://github.com/nosferalatu/SimpleGPUHashTable) which in turn is based on [Cliff Click's hash table](https://preshing.com/20130605/the-worlds-simplest-lock-free-hash-table/). It also uses the MurmurHash3 function by Austin Appleby. By leveraging the massive parellel processing power of GPUs the table is able to achieve an incredible rate of insertions, lookups, and deletions. On my RTX 2080 Super I was able to get an average rate of insertions, lookups and deletions of about 5 * 10^12 per second at a load factor of about 95% (though I am almost positive this is incorrect and due to the way I am calculating the time of the dispatches). 
