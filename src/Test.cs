@@ -94,8 +94,7 @@ public class Test : MonoBehaviour
 
             //Because test[] and test2[] are arrays of type uint and not KeyValue, we effectively have a stride of 2. Thus to check the value part of KeyValue, we start at index 3 and iterate up by 2.
             //If the insertion and lookup were performed properly, test[] and test2[] should be identical. 
-            //there appears to be a bug
-            for (int i = 3; i < test.Length; i += 2)
+            for (int i = 1; i < test.Length; i += 2)
             {
                 if (test[i] != test2[i])
                 {
@@ -119,9 +118,13 @@ public class Test : MonoBehaviour
             hashBuffer.GetData(test3);
 
             //If deletion was performed properly, test3[] should always equal the sentinel value, 0xffffffff
-            for (int i = 3; i < test3.Length; i += 2)
+            //there appears to be a bug
+            for (int i = 1; i < test3.Length; i += 2)
             {
-                Debug.Log(test3[i]);
+                if (test3[i] != 0xffffffff)
+                {
+                    Debug.Log("Deletion error at " + i);
+                }
             }
         }
     }
