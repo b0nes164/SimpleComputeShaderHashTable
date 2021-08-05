@@ -6,7 +6,7 @@ This project is a Unity Compute Shader implementation of a [simple GPU hash tabl
 
 This code implements a lock free hash table using linear probing, and achieves thread safety using an atomic function, `InterlockedCompareExchange()`, to insert key/values into the table. Because it uses linear probing, the table is cache-effecient, but performance quickly degrades as the load factor increases.
 
-The compute shader portion of this code is written in HLSL, but since of the unique way Unity interfaces with the compute shader this is not a complete HLSL solution. This hash table was designed to work on 32bit keys and 32bit values. The hash table is not resizeable, and its size must be a power of 2. It reserves 0xffffffff as a sentinel value.
+The compute shader portion of this code is written in HLSL, but since of the unique way Unity interfaces with the compute shader this is not a complete HLSL solution. This hash table was designed to work on 32bit keys and 32bit values. The hash table is not resizeable, and its size must be a power of 2. It reserves 0xffffffff as a sentinel value for both keys and values.
 
 # To use this project
 To use this project, simply add `Hash.compute` and `Test.cs` to an existing Unity project, attach `Test.cs` to a gameobject in the editor, and attach `Hash.compute` to `Test.cs`. These scripts were written in a Unity project version 2021.1.5f1, but can probably be used in older versions so long as it supports compute shaders.    
