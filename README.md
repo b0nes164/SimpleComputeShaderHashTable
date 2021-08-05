@@ -1,5 +1,4 @@
 # SimpleComputeShaderHashTable
-A Unity Compute Shader Version of David Farell's hash table.
 
 ![hash](https://user-images.githubusercontent.com/68340554/128312010-7b256383-3c02-4dae-83fb-014a025cc708.PNG)
 # About This Project
