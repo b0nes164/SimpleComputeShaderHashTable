@@ -12,7 +12,7 @@ public class Test : MonoBehaviour
 
     private ComputeBuffer valuesBuffer;
     private ComputeBuffer hashBuffer;
-    private int bufferSize = 1000;
+    private int bufferSize = 32000000;
     private int hashBufferSize;
 
     private int initKernel;
@@ -51,7 +51,6 @@ public class Test : MonoBehaviour
 
     private void Update()
     {
-        //Calls the Hash Test function when you press space
         if (Input.GetKeyDown(KeyCode.Space))
         {
             HashTest();
@@ -93,9 +92,9 @@ public class Test : MonoBehaviour
             test2 = new uint[bufferSize * 2];
             valuesBuffer.GetData(test2);
 
-            //As per the original Algorithm by Cliff Click, keys and values must not be zero, so we simply skip checking the first element.
             //Because test[] and test2[] are arrays of type uint and not KeyValue, we effectively have a stride of 2. Thus to check the value part of KeyValue, we start at index 3 and iterate up by 2.
             //If the insertion and lookup were performed properly, test[] and test2[] should be identical. 
+            //there appears to be a bug
             for (int i = 3; i < test.Length; i += 2)
             {
                 if (test[i] != test2[i])
