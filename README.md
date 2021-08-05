@@ -8,10 +8,10 @@ This code implements a lock free hash table using linear probing, and achieves t
 
 The compute shader portion of this code is written in HLSL, but since of the unique way Unity interfaces with the compute shader this is not a complete HLSL solution. This hash table was designed to work on 32bit keys and 32bit values. The hash table is not resizeable, and its size must be a power of 2. It reserves 0xffffffff as a sentinel value.
 
-#To use this project
+# To use this project
 To use this project, simply add `Hash.compute` and `Test.cs` to an existing Unity project, attatch `Test.cs` to a gameobject in the editor, and attach `Hash.compute` to `Test.cs` also in the editor. These scripts were written in a Unity project version 2021.1.5f1, but can probably be used in older versions so long as it supports compute shaders.    
 
-#To Learn More
+# To Learn More
 If you want learn more about this hash table and how it was designed I would highly encourage reading [David Farell's blog post](https://nosferalatu.com/SimpleGPUHashTable.html). If you want to learn more about GPU powered hash tables in general see this article [here](https://arxiv.org/pdf/2009.07914.pdf);
 
 
