@@ -15,4 +15,4 @@ To use this project, simply add `Hash.compute` and `Test.cs` to an existing Unit
 If you want learn more about this hash table and how it was designed I would highly encourage reading [David Farell's blog post](https://nosferalatu.com/SimpleGPUHashTable.html). If you want to learn more about GPU powered hash tables in general see this article [here](https://arxiv.org/pdf/2009.07914.pdf).
 
 # Known issues
-The insertion function somehow is setting both the key and the value at index 0 of the hash table to 0. Not really sure how this is possible.
+The delete function absolutely does not work. At all.
