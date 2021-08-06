@@ -36,8 +36,6 @@ void HashInsert(RWStructuredBuffer<KeyValue> _hashBuffer, uint key, uint value)
 {
     uint slot = hash(key);
 
-    
-
     while(true)
     {
         uint prev;
@@ -79,13 +77,9 @@ void HashDelete(RWStructuredBuffer<KeyValue> _hashBuffer, uint key)
 
     while (true)
     {
-        if (_hashBuffer[slot].key == key)
+        if (_hashBuffer[slot].key == key || _hashBuffer[slot].key == s_empty)
         {
             _hashBuffer[slot].value = s_empty;
-            return;
-        }
-        if (_hashBuffer[slot].key == s_empty)
-        {
             return;
         }
 
@@ -117,8 +111,8 @@ void Initialize(uint3 id : SV_DispatchThreadID)
 
         if (id.x < bufferSize)
         {
-            ValuesBuffer[id.x].key = rand(id.x, random);
-            ValuesBuffer[id.x].value = rand(id.x, randomTwo);
+            ValuesBuffer[id.x].key = id.x;
+            ValuesBuffer[id.x].value = id.x + 1;
         }
     }
 }

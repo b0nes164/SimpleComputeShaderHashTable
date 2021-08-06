@@ -98,7 +98,7 @@ public class Test : MonoBehaviour
 
             //Because test[] and test2[] are arrays of type uint and not KeyValue, we effectively have a stride of 2. Thus to check the value part of KeyValue, we start at index 3 and iterate up by 2.
             //If the insertion and lookup were performed properly, test[] and test2[] should be identical. 
-            for (int i = 1; i < test.Length; i += 2)
+            for (int i = 1; i < test.Length; i +=2)
             {
                 if (test[i] != test2[i])
                 {
