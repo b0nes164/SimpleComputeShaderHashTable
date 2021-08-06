@@ -4,7 +4,7 @@
 # About This Project
 This project is a Unity Compute Shader implementation of a [simple GPU hash table written by David Farell](https://github.com/nosferalatu/SimpleGPUHashTable) which in turn is based on [Cliff Click's hash table](https://preshing.com/20130605/the-worlds-simplest-lock-free-hash-table/). It uses the MurmurHash3 function by Austin Appleby. 
 
-By leveraging the massive parellel processing power of GPUs the table is able to achieve an incredible rate of insertions, lookups, and deletions. On my RTX 2080 Super I was able to get an average rate of insertions, lookups and deletions of about 5 * 10^12 per second at a load factor of about 95% (though I am almost positive this is incorrect and due to the fact that I am unaware of any way to determine when a dispatch has been complete). 
+By leveraging the massive parellel processing power of GPUs the table is able to achieve an incredible rate of insertions, lookups, and deletions. On my RTX 2080 Super I was able to get an average rate of insertions, lookups and deletions of about 5 * 10^12 per second at a load factor of about 95% (though I am almost positive this is incorrect, and due to the fact that I am unaware of any way to determine when a compute shader dispatch has been completed). 
 
 This code implements a lock free hash table using linear probing, and achieves thread safety using an atomic function, `InterlockedCompareExchange()`, to insert key/values into the table. Because it uses linear probing, the table is cache-effecient, but performance quickly degrades as the load factor increases.
 
