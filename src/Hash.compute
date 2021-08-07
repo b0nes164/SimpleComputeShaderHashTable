@@ -18,8 +18,8 @@ static uint s_empty = 0xffffffff;
 //These values are set by the Test class
 extern uint hashBufferSize;
 extern uint bufferSize;
-extern float random;
-extern float randomTwo;
+extern uint random;
+extern uint randomTwo;
 
 
 uint hash(uint k)
@@ -77,7 +77,6 @@ void HashDelete(RWStructuredBuffer<KeyValue> _hashBuffer, uint key)
 
     while (true)
     {
-
         if (_hashBuffer[slot].key == s_empty)
         {
             return;
@@ -100,8 +99,7 @@ uint rand(uint s, uint seed)
     s *= 2654435769u;
     s ^= s >> 16;
     s *= 2654435769u;
-    s--;
-    return s;
+    return s & (0xffffffff - 1);
 }
 
 //Set the Hash Buffer keys and values to the proper state, and fill the value buffer with random numbers.
