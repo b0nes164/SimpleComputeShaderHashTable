@@ -21,9 +21,9 @@ The compute shader portion of this code is written in HLSL, but since of the uni
 To use this project, simply add `Hash.compute` and `Test.cs` to an existing Unity project, attach `Test.cs` to a gameobject in the editor, and attach `Hash.compute` to `Test.cs`. These scripts were written in a Unity project version 2021.1.5f1, but can probably be used in older versions so long as it supports compute shaders.    
 
 # Notes about the Demo
-- The maximum size of the hash table is 33554432 because of Unity's limit on thread groups, though you could increase this by changing the number of threads on the kernel.
-- Be careful about enabling validation on extremely large dispatches because validation is extremely memory hungry.
-- One of the debug coroutines has a bug where the native array it uses is not disposed of, despite the `dispose()` method being called. Not really sure how to fix this though.
+* The maximum size of the hash table is 33554432 because of Unity's limit on thread groups, though you could increase this by changing the number of threads on the kernel.
+* Be careful about enabling validation on extremely large dispatches because validation is extremely memory hungry.
+* One of the debug coroutines has a bug where the native array it uses is not disposed of, despite the `dispose()` method being called. Not really sure how to fix this though.
 
 # To Learn More
 If you want learn more about this hash table and how it was designed I would highly encourage reading [David Farell's blog post](https://nosferalatu.com/SimpleGPUHashTable.html). If you want to learn more about GPU powered hash tables in general see this scholarly article [WarpCore: A Library for fast Hash Tables on GPUs](https://arxiv.org/pdf/2009.07914.pdf).
