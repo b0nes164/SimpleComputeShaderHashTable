@@ -1,13 +1,13 @@
 # SimpleComputeShaderHashTable
 
-![hash](https://user-images.githubusercontent.com/68340554/128588217-7a013ea2-153e-4b27-a418-db551b999177.PNG)
+![hash](https://user-images.githubusercontent.com/68340554/128619452-65042a29-9174-4a14-a0ba-efc0abb0f598.PNG)
 
 # About This Project
 This project is a Unity Compute Shader implementation of a [simple GPU hash table written by David Farell](https://github.com/nosferalatu/SimpleGPUHashTable) which in turn is based on [Cliff Click's hash table](https://preshing.com/20130605/the-worlds-simplest-lock-free-hash-table/). It uses the [MurmurHash3 function by Austin Appleby](https://github.com/aappleby/smhasher). All of the above works are in the public domain, and free to use, as is this project. 
 
-By leveraging the massive parellel processing power of GPUs the table is able to achieve an incredible rate of insertions, lookups, and deletions. On my RTX 2080 Super I was able to get an average rate of insertions, lookups and deletions of about 3 * 10^12 per second at a load factor of about 95%.
-
 This code implements a lock free hash table using linear probing, and achieves thread safety using an atomic function, `InterlockedCompareExchange()`, to insert key/values into the table. Because it uses linear probing, the table is cache-effecient, but performance quickly degrades as the load factor increases.
+
+By leveraging the massive parellel processing power of GPUs the table is able to achieve an incredible rate of insertions, lookups, and deletions. On my RTX 2080 Super I was able to get an average rate of insertions, lookups and deletions of about 4 * 10^7 per second at a load factor of about 95% despite being the worst case scenario for the table.
 
 The compute shader portion of this code is written in HLSL, but since of the unique way Unity interfaces with the compute shader this is not a complete HLSL solution.
 
