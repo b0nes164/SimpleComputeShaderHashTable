@@ -83,13 +83,12 @@ public class Test : MonoBehaviour
         }
 
         //Dispatch the insertion kernel.
-        time = Time.realtimeSinceStartup;
         Graphics.WaitOnAsyncGraphicsFence(fence);
+        time = Time.realtimeSinceStartup;
         compute.SetBuffer(insertKernel, "HashBuffer", hashBuffer);
         compute.SetBuffer(insertKernel, "ValuesBuffer", valuesBuffer);
         compute.Dispatch(insertKernel, Mathf.CeilToInt(bufferSize / 1024f), 1, 1);
-        Graphics.WaitOnAsyncGraphicsFence(fence);
-        Debug.Log("Insertion time for " + bufferSize + " random numbers: " + (Time.realtimeSinceStartup - time) + ".      " + ((1f / (Time.realtimeSinceStartup - time)) * bufferSize) + " keys/sec");
+        StartCoroutine(Timing(0));
 
         //Dispatch the lookup kernel.
         Graphics.WaitOnAsyncGraphicsFence(fence);
@@ -97,8 +96,7 @@ public class Test : MonoBehaviour
         compute.SetBuffer(lookupKernel, "HashBuffer", hashBuffer);
         compute.SetBuffer(lookupKernel, "ValuesBuffer", valuesBuffer);
         compute.Dispatch(lookupKernel, Mathf.CeilToInt(bufferSize / 1024f), 1, 1);
-        Graphics.WaitOnAsyncGraphicsFence(fence);
-        Debug.Log("Lookup time for " + bufferSize + " random numbers: " + (Time.realtimeSinceStartup - time) + ".      " + ((1f / (Time.realtimeSinceStartup - time)) * bufferSize) + " keys/sec");
+        StartCoroutine(Timing(1));
 
         //Grab the data after the lookup for validation
         if (validation)
@@ -123,8 +121,7 @@ public class Test : MonoBehaviour
         compute.SetBuffer(deleteKernel, "HashBuffer", hashBuffer);
         compute.SetBuffer(deleteKernel, "ValuesBuffer", valuesBuffer);
         compute.Dispatch(deleteKernel, Mathf.CeilToInt(bufferSize / 1024f), 1, 1);
-        Graphics.WaitOnAsyncGraphicsFence(fence);
-        Debug.Log("Delete time for " + bufferSize + " random numbers: " + (Time.realtimeSinceStartup - time) + ".      " + ((1f / (Time.realtimeSinceStartup - time)) * bufferSize) + " keys/sec");
+        StartCoroutine(Timing(2));
 
         //Grab the hashbuffer after deletion for validation.
         if (validation)
@@ -158,18 +155,18 @@ public class Test : MonoBehaviour
 
     IEnumerator debug()
     {
-        getDebugData();
+        GetDebugData();
 
         yield return new WaitForSeconds(1);
 
-        getDebugData();
+        GetDebugData();
 
         yield return new WaitForSeconds(1);
 
-        getDebugData();
+        GetDebugData();
     }
 
-    private void getDebugData()
+    private void GetDebugData()
     {
         Debug.Log("running!");
 
@@ -188,7 +185,7 @@ public class Test : MonoBehaviour
         }
     }
 
-    IEnumerator asyncDebug()
+    IEnumerator AsyncDebug()
     {
         NativeArray<uint> test4 = new NativeArray<uint>(hashBufferSize * 2, Allocator.Persistent);
 
@@ -206,5 +203,30 @@ public class Test : MonoBehaviour
         }
 
         test4.Dispose();
+    }
+
+    IEnumerator Timing(int timingCase)
+    {
+        if (timingCase == 0)
+        {
+            var request = AsyncGPUReadback.Request(valuesBuffer);
+            yield return new WaitUntil(() => request.done);
+            Debug.Log("Insertion time for " + bufferSize + " random numbers: " + (Time.realtimeSinceStartup - time) + ".      " + ((1f / (Time.realtimeSinceStartup - time)) * bufferSize) + " keys/sec");
+        }
+
+        if (timingCase == 1)
+        {
+            var request = AsyncGPUReadback.Request(valuesBuffer);
+            yield return new WaitUntil(() => request.done);
+            Debug.Log("Lookup time for " + bufferSize + " random numbers: " + (Time.realtimeSinceStartup - time) + ".      " + ((1f / (Time.realtimeSinceStartup - time)) * bufferSize) + " keys/sec");
+        }
+
+        if (timingCase == 2)
+        {
+            var request = AsyncGPUReadback.Request(hashBuffer);
+            yield return new WaitUntil(() => request.done);
+            Debug.Log("Deletion time for " + bufferSize + " random numbers: " + (Time.realtimeSinceStartup - time) + ".      " + ((1f / (Time.realtimeSinceStartup - time)) * bufferSize) + " keys/sec");
+        }
+
     }
 }
