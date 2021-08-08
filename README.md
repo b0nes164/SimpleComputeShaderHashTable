@@ -7,14 +7,14 @@ This project is a Unity Compute Shader implementation of a [simple GPU hash tabl
 
 This code implements a lock free hash table using linear probing, and achieves thread safety using an atomic function, `InterlockedCompareExchange()`, to insert key/values into the table. Because it uses linear probing, the table is cache-effecient, but performance quickly degrades as the load factor increases.
 
-By leveraging the massive parellel processing power of GPUs the table is able to achieve an incredible rate of insertions, lookups, and deletions. On my RTX 2080 Super I was able to get an average rate of insertions, lookups and deletions of about 4 * 10^7 per second at a load factor of about 95% (the worst case scenario for a linear probe hash table).
+By leveraging the massive parallel processing power of GPUs the table is able to achieve an incredible rate of insertions, lookups, and deletions. On my RTX 2080 Super I was able to get an average rate of insertions, lookups and deletions of about 4 * 10^7 per second at a load factor of about 95% (the worst case scenario for a linear probe hash table).
 
-The compute shader portion of this code is written in HLSL, but since of the unique way Unity interfaces with the compute shader this is not a complete HLSL solution.
+The compute shader portion of this code is written in HLSL, but because of the unique way Unity interfaces with the compute shader this is not a complete HLSL solution.
 
 # Important notes
 * This hash table was designed to work on 32bit keys and 32bit values.
 * The size of the hash table must be a power of 2. 
-* The hash table is not resizeable. 
+* The hash table is not resizable. 
 * It reserves 0xffffffff as an empty sentinel value for both keys and values.
 
 # To use this project
