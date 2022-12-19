@@ -7,24 +7,18 @@ This project is a Unity Compute Shader implementation of a [simple GPU hash tabl
 
 This code implements a lock free hash table using linear probing, and achieves thread safety using an atomic function, `InterlockedCompareExchange()`, to insert key/values into the table. Because it uses linear probing, the table is cache-effecient, but performance quickly degrades as the load factor increases.
 
-By leveraging the massive parallel processing power of GPUs the table is able to achieve an incredible rate of insertions, lookups, and deletions. On my RTX 2080 Super I was able to get an average rate of insertions, lookups and deletions of about 4 * 10^7 per second at a load factor of about 95% (the worst case scenario for a linear probe hash table).
-
-The compute shader portion of this code is written in HLSL, but because of the unique way Unity interfaces with the compute shader this is not a complete HLSL solution.
-
 # Important notes
-* This hash table was designed to work on 32bit keys and 32bit values.
-* The size of the hash table must be a power of 2. 
-* The hash table is not resizable. 
+* The table uses 32bit keys and 32bit values.
+* Because we use bitwise AND to cycle through the table when probing, the size of the table must be a power of 2.
 * It reserves 0xffffffff as an empty sentinel value for both keys and values.
+* I have not included a resizing function, but it would operate exactly like you would expect. A general outline would be something like: cycle through the values of the hashbuffer, and then rehash any non-empty value into the new table. 
 
 # To use this project
-To use this project, simply add `Hash.compute` and `Test.cs` to an existing Unity project, attach `Test.cs` to a gameobject in the editor, and attach `Hash.compute` to `Test.cs`. These scripts were written in a Unity project version 2021.1.5f1, but can probably be used in older versions so long as it supports compute shaders.    
-
-# Notes about the Demo
-* The maximum size of the hash table is 33554432 because of Unity's limit on thread groups, though you could increase this by changing the number of threads on the kernel.
-* Be careful about enabling validation on extremely large dispatches because validation is extremely memory hungry.
-* One of the debug coroutines has a bug where the native array it uses is not disposed of, despite the `dispose()` method being called. Not really sure how to fix this though.
+To use this project, simply add `Hash.compute` and `Test.cs` to an existing Unity project, attach `Test.cs` to a gameobject in the editor, and attach `Hash.compute` to `Test.cs`.
+* If you want to verify that the HashTable is working properly, tick `Validation` on the gameobject.
+* If you want to get a text output if there are validation errors, tick `Validation Text` though be careful because this will cause a lot of lag on large inputs (1 mil +).
+* If you want to test the speed of the HashTable, untick `Validation.` The validation and speed testing is mutually exclusive in this demo.
+* These scripts were written in a Unity project version 2021.1.5f1, but can probably be used in older versions so long as it supports compute shaders.    
 
 # To Learn More
 If you want learn more about this hash table and how it was designed I would highly encourage reading [David Farell's blog post](https://nosferalatu.com/SimpleGPUHashTable.html). If you want to learn more about GPU powered hash tables in general see this scholarly article [WarpCore: A Library for fast Hash Tables on GPUs](https://arxiv.org/pdf/2009.07914.pdf).
-
