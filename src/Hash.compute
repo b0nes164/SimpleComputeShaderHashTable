@@ -1,147 +1,119 @@
 #pragma kernel Initialize
-#pragma kernel HashInsertKern
-#pragma kernel HashLookupKern
-#pragma kernel HashDeleteKern
+#pragma kernel Insert
+#pragma kernel Lookup
+#pragma kernel Delete
 
-struct KeyValue
-{
-	uint key;
-	uint value;
-};
+#define THREAD_BLOCKS 256
+#define GROUP_SIZE 64
+#define EMPTY 0xffffffff
 
-RWStructuredBuffer<KeyValue> HashBuffer;
-RWStructuredBuffer<KeyValue> ValuesBuffer;
+RWStructuredBuffer<uint2> b_hash;
+RWStructuredBuffer<uint> b_inputOutput;
 
-//Set the sentinel value
-static uint s_empty = 0xffffffff;
+extern uint e_hashBufferSize;
+extern uint e_inputSize;
 
-//These values are set by the Test class
-extern uint hashBufferSize;
-extern uint bufferSize;
-extern uint random;
-extern uint randomTwo;
-
-
-uint hash(uint k)
+//********************************
+// Murmurhash3 32Bit Hash Function
+// Author: Austin Appleby
+// Lastmod: 1/8/2016
+// Liscence: MIT License
+// Added 8/4/2021
+uint hash(uint k, uint bufferSize)
 {
     k ^= k >> 16;
     k *= 0x85ebca6b;
     k ^= k >> 13;
     k *= 0xc2b2ae35;
     k ^= k >> 16;
-    return k & (hashBufferSize - 1);
+    return k & (bufferSize - 1);
 }
 
-void HashInsert(RWStructuredBuffer<KeyValue> _hashBuffer, uint key, uint value)
+void HashInsert(RWStructuredBuffer<uint2> hashBuffer, uint key, uint value, uint bufferSize)
 {
-    uint slot = hash(key);
-
-    while(true)
+    uint slot = hash(key, bufferSize);
+    while (true)
     {
         uint prev;
-
-        InterlockedCompareExchange(_hashBuffer[slot].key, s_empty, key, prev);
-
-        if (prev == s_empty || prev == key)
+        InterlockedCompareExchange(hashBuffer[slot].x, EMPTY, key, prev);
+        if (prev == EMPTY || prev == key)
         {
-            _hashBuffer[slot].value = value;
+            hashBuffer[slot].y = value;
             return;
         }
-
-        slot = (slot + 1) & (hashBufferSize - 1);
+        slot = (slot + 1) & (bufferSize - 1);
     }
 }
 
-uint HashLookup(RWStructuredBuffer<KeyValue> _hashBuffer, uint key)
+uint HashLookup(RWStructuredBuffer<uint2> hashBuffer, uint key, uint bufferSize)
 {
-    uint slot = hash(key);
-
+    uint slot = hash(key, bufferSize);
     while (true)
     {
-        if (_hashBuffer[slot].key == key)
+        if (hashBuffer[slot].x == key)
         {
-            return _hashBuffer[slot].value;
+            return hashBuffer[slot].y;
         }
-        if (_hashBuffer[slot].key == s_empty)
+        if (hashBuffer[slot].x == EMPTY)
         {
-            return s_empty;
+            return EMPTY;
         }
-
-        slot = (slot + 1) & (hashBufferSize - 1);
+        slot = (slot + 1) & (bufferSize - 1);
     }
+    return EMPTY;
 }
 
-void HashDelete(RWStructuredBuffer<KeyValue> _hashBuffer, uint key)
+void HashDelete(RWStructuredBuffer<uint2> hashBuffer, uint key, uint bufferSize)
 {
-    uint slot = hash(key);
-
+    uint slot = hash(key, bufferSize);
     while (true)
     {
-        if (_hashBuffer[slot].key == s_empty)
+        if (hashBuffer[slot].x == EMPTY)
         {
             return;
         }
-        if (_hashBuffer[slot].key == key)
+        if (hashBuffer[slot].x == key)
         {
-            _hashBuffer[slot].value = s_empty;
+            hashBuffer[slot].y = EMPTY;
             return;
         }
-        slot = (slot + 1) & (hashBufferSize - 1);
+        slot = (slot + 1) & (bufferSize - 1);
     }
 }
 
-uint rand(uint s, uint seed)
-{
-    s += seed;
-    s ^= 2747636419u;
-    s *= 2654435769u;
-    s ^= s >> 16;
-    s *= 2654435769u;
-    s ^= s >> 16;
-    s *= 2654435769u;
-    return s & (0xffffffff - 1);
-}
-
-//Set the Hash Buffer keys and values to the proper state, and fill the value buffer with random numbers.
-[numthreads(1024, 1, 1)]
+//In order for the Hash Table to work, it must be initialized to the empty sentinel value
+[numthreads(GROUP_SIZE, 1, 1)]
 void Initialize(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x < hashBufferSize)
+    for (uint i = id.x; i < e_hashBufferSize; i += GROUP_SIZE * THREAD_BLOCKS)
     {
-        HashBuffer[id.x].key = s_empty;
-        HashBuffer[id.x].value = s_empty;
-
-        if (id.x < bufferSize)
-        {
-            ValuesBuffer[id.x].key = rand(id.x, random);
-            ValuesBuffer[id.x].value = rand(id.x, randomTwo);
-        }
+        b_hash[i] = uint2(EMPTY, EMPTY);
     }
 }
 
-[numthreads(1024,1,1)]
-void HashInsertKern(uint3 id : SV_DispatchThreadID)
+[numthreads(GROUP_SIZE, 1, 1)]
+void Insert(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x < bufferSize)
+    for (uint i = id.x; i < e_inputSize; i += GROUP_SIZE * THREAD_BLOCKS)
     {
-        HashInsert(HashBuffer, ValuesBuffer[id.x].key, ValuesBuffer[id.x].value);
+        HashInsert(b_hash, i, b_inputOutput[i], e_hashBufferSize);
     }
 }
 
-[numthreads(1024, 1, 1)]
-void HashLookupKern(uint3 id : SV_DispatchThreadID)
+[numthreads(GROUP_SIZE, 1, 1)]
+void Lookup(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x < bufferSize)
+    for (uint i = id.x; i < e_inputSize; i += GROUP_SIZE * THREAD_BLOCKS)
     {
-        ValuesBuffer[id.x].value = HashLookup(HashBuffer, ValuesBuffer[id.x].key);
+        b_inputOutput[i] = HashLookup(b_hash, i, e_hashBufferSize);
     }
 }
 
-[numthreads(1024, 1, 1)]
-void HashDeleteKern(uint3 id : SV_DispatchThreadID)
+[numthreads(GROUP_SIZE, 1, 1)]
+void Delete(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x < bufferSize)
+    for (uint i = id.x; i < e_inputSize; i += GROUP_SIZE * THREAD_BLOCKS)
     {
-        HashDelete(HashBuffer, ValuesBuffer[id.x].key);
+        HashDelete(b_hash, i, e_hashBufferSize);
     }
 }

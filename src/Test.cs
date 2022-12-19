@@ -2,231 +2,198 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
-using Unity.Collections;
 
 public class Test : MonoBehaviour
 {
     [SerializeField]
     private ComputeShader compute;
-
+    [SerializeField]
+    private int inputSize;
     [SerializeField]
     private bool validation;
     [SerializeField]
-    private int bufferSize;
+    private bool validationText;
+    [Range(1, 1000)]
+    public int batchSizeForTiming;
 
-    private ComputeBuffer valuesBuffer;
-    private ComputeBuffer hashBuffer;
+    private ComputeBuffer b_hash;
+    private ComputeBuffer b_inputOutput;
+
+    private int k_init;
+    private int k_insert;
+    private int k_lookup;
+    private int k_delete;
+
+    private static int THREAD_BLOCKS = 256;
+    private uint[] inputOutputArray;
     private int hashBufferSize;
+    private System.Random rand;
 
-    private int initKernel;
-    private int insertKernel;
-    private int lookupKernel;
-    private int deleteKernel;
-
-    System.Random rand = new System.Random();
-    private float time;
-    private GraphicsFence fence;
-
-    private uint[] test;
-    private uint[] test2;
-    private uint[] test3;
-
-    private void Start()
+    void Start()
     {
-        //Find the smallest power of 2 equal to or larger than input buffer size, because the size of the hashBuffer must always be a power of two.
-        hashBufferSize = SizeToPow(bufferSize);
+        //initialize and fill test arrays based on the size of the desired input
+        hashBufferSize = SizeToPow(inputSize);
+        inputOutputArray = new uint[inputSize];
 
-        //Initialize the bufferSize fields 
-        compute.SetInt("hashBufferSize", hashBufferSize);
-        compute.SetInt("bufferSize", bufferSize);
+        compute.SetInt("e_hashBufferSize", hashBufferSize);
+        compute.SetInt("e_inputSize", inputSize);
 
-        //Get the int associated with each kernel.
-        initKernel = compute.FindKernel("Initialize");
-        insertKernel = compute.FindKernel("HashInsertKern");
-        lookupKernel = compute.FindKernel("HashLookupKern");
-        deleteKernel = compute.FindKernel("HashDeleteKern");
+        k_init = compute.FindKernel("Initialize");
+        k_insert = compute.FindKernel("Insert");
+        k_lookup = compute.FindKernel("Lookup");
+        k_delete = compute.FindKernel("Delete");
 
-        //Allocate the memory for the buffers.
-        hashBuffer = new ComputeBuffer(hashBufferSize, sizeof(uint) * 2);
-        valuesBuffer = new ComputeBuffer(bufferSize, sizeof(uint) * 2);
+        b_hash = new ComputeBuffer(hashBufferSize, sizeof(uint) * 2);
+        b_inputOutput = new ComputeBuffer(inputSize, sizeof(uint));
 
-        //Just in case, for debugging purposes
-        fence = Graphics.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.ComputeProcessing);
-        HashTest();
+        //for simplicity we generate the random numbers on the CPU, then push to the GPU
+        rand = new System.Random();
+        for (int i = 0; i < inputSize; i++)
+        {
+            inputOutputArray[i] = (uint)rand.Next(0, int.MaxValue);
+        }
+        b_inputOutput.SetData(inputOutputArray);
+
+        //assign the buffers to the kernels
+        compute.SetBuffer(k_init, "b_hash", b_hash);
+
+        compute.SetBuffer(k_insert, "b_hash", b_hash);
+        compute.SetBuffer(k_insert, "b_inputOutput", b_inputOutput);
+
+        compute.SetBuffer(k_lookup, "b_hash", b_hash);
+        compute.SetBuffer(k_lookup, "b_inputOutput", b_inputOutput);
+
+        compute.SetBuffer(k_delete, "b_hash", b_hash);
+        compute.SetBuffer(k_delete, "b_inputOutput", b_inputOutput);
+
+        //Dispatch init
+        compute.Dispatch(k_init, THREAD_BLOCKS, 1, 1);
+        Debug.Log("Initialization Complete, press space to begin test");
     }
 
-    private void Update()
+    void Update()
     {
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            HashTest();
+            if (validation)
+            {
+                HashValidation();
+            }
+            else
+            {
+                HashTest();
+            }
         }
     }
 
-    //Dispatches the kernels for initialization, insertion, lookup, delete, in that order.
-    private void HashTest()
+    private void HashValidation()
     {
-        //set the random seeds
-        compute.SetInt("random", rand.Next(0, 2000000000));
-        compute.SetInt("randomTwo", rand.Next(1, 2000000000));
+        uint[] validationArray = inputOutputArray;
+        bool checks = true;
 
-        //dispatch the Initialize kernel, which sets all indexes on the HashBuffer to the empty state, and fills the ValueBuffer with random uints.
-        compute.SetBuffer(initKernel, "HashBuffer", hashBuffer);
-        compute.SetBuffer(initKernel, "ValuesBuffer", valuesBuffer);
-        compute.Dispatch(initKernel, Mathf.CeilToInt(hashBufferSize / 1024f), 1, 1);
-
-        //Grab the data from the ValuesBuffer before insertion + lookup for validation.
-        if (validation)
+        compute.Dispatch(k_insert, THREAD_BLOCKS, 1, 1);
+        compute.Dispatch(k_lookup, THREAD_BLOCKS, 1, 1);
+        b_inputOutput.GetData(inputOutputArray);
+        for (int i = 0; i < inputSize; i++)
         {
-            test = new uint[bufferSize * 2];
-            valuesBuffer.GetData(test);
-        }
-
-        //Dispatch the insertion kernel.
-        Graphics.WaitOnAsyncGraphicsFence(fence);
-        time = Time.realtimeSinceStartup;
-        compute.SetBuffer(insertKernel, "HashBuffer", hashBuffer);
-        compute.SetBuffer(insertKernel, "ValuesBuffer", valuesBuffer);
-        compute.Dispatch(insertKernel, Mathf.CeilToInt(bufferSize / 1024f), 1, 1);
-        StartCoroutine(Timing(0));
-
-        //Dispatch the lookup kernel.
-        Graphics.WaitOnAsyncGraphicsFence(fence);
-        time = Time.realtimeSinceStartup;
-        compute.SetBuffer(lookupKernel, "HashBuffer", hashBuffer);
-        compute.SetBuffer(lookupKernel, "ValuesBuffer", valuesBuffer);
-        compute.Dispatch(lookupKernel, Mathf.CeilToInt(bufferSize / 1024f), 1, 1);
-        StartCoroutine(Timing(1));
-
-        //Grab the data after the lookup for validation
-        if (validation)
-        {
-            test2 = new uint[bufferSize * 2];
-            valuesBuffer.GetData(test2);
-
-            //Because test[] and test2[] are arrays of type uint and not KeyValue, we effectively have a stride of 2. Thus to check the value part of KeyValue, we start at index 1 and iterate up by 2.
-            //If the insertion and lookup were performed properly, test[] and test2[] should be identical. 
-            for (int i = 1; i < test.Length; i +=2)
+            if (inputOutputArray[i] != validationArray[i])
             {
-                if (test[i] != test2[i])
-                {
-                    Debug.Log("Insertion/Lookup error at :" + i);
-                }
+                if (validationText)
+                    Debug.LogError("EXPECTED THE SAME: " + inputOutputArray[i] + ", " + validationArray[i]);
+                checks = false;
             }
         }
 
-        //Dispatch the delete kernel
-        Graphics.WaitOnAsyncGraphicsFence(fence);
-        time = Time.realtimeSinceStartup;
-        compute.SetBuffer(deleteKernel, "HashBuffer", hashBuffer);
-        compute.SetBuffer(deleteKernel, "ValuesBuffer", valuesBuffer);
-        compute.Dispatch(deleteKernel, Mathf.CeilToInt(bufferSize / 1024f), 1, 1);
-        StartCoroutine(Timing(2));
-
-        //Grab the hashbuffer after deletion for validation.
-        if (validation)
+        compute.Dispatch(k_delete, THREAD_BLOCKS, 1, 1);
+        compute.Dispatch(k_lookup, THREAD_BLOCKS, 1, 1);
+        b_inputOutput.GetData(inputOutputArray);
+        for (int i = 0; i < inputSize; i++)
         {
-            StartCoroutine(debug()); 
-            //StartCoroutine(asyncDebug());
+            if (inputOutputArray[i] != 0xffffffff)
+            {
+                if (validationText)
+                    Debug.Log("EXPECTED UINT MAX - 1: " + inputOutputArray[i]);
+                checks = false;
+            }
+            inputOutputArray[i] = (uint)rand.Next(0, int.MaxValue);
         }
+        b_inputOutput.SetData(inputOutputArray);
+
+        compute.Dispatch(k_insert, THREAD_BLOCKS, 1, 1);
+        compute.Dispatch(k_lookup, THREAD_BLOCKS, 1, 1);
+        b_inputOutput.GetData(inputOutputArray);
+        for (int i = 0; i < inputSize; i++)
+        {
+            if (inputOutputArray[i] != validationArray[i])
+            {
+                if (validationText)
+                    Debug.LogError("EXPECTED THE SAME: " + inputOutputArray[i] + ", " + validationArray[i]);
+                checks = false;
+            }
+        }
+
+        if (checks)
+            Debug.Log("Complete, all tests passed");
+        else
+            Debug.LogError("Validation Error, further tests required");
     }
 
-    //Release memory for buffers when done.
-    private void OnDisable()
+    private void HashTest()
     {
-        valuesBuffer.Release();
-        hashBuffer.Release();
+        Debug.Log("Beginning " + batchSizeForTiming + " iterations of " + inputSize + " elements at: " + (inputSize * 100.0f / hashBufferSize) + "% load factor");
+        StartCoroutine(MultiTiming());
     }
 
-    //Return the smallest power of 2 equal to or larger than the input integer.
+    private IEnumerator MultiTiming()
+    {
+        float insertTotalTime = 0;
+        float lookupTotalTime = 0;
+        float deletionTotalTime = 0;
+
+        for (int i = 0; i < batchSizeForTiming; i++)
+        {
+            float time = Time.realtimeSinceStartup;
+            compute.Dispatch(k_insert, THREAD_BLOCKS, 1, 1);
+            var request = AsyncGPUReadback.Request(b_hash);
+            yield return new WaitUntil(() => request.done);
+            insertTotalTime += Time.realtimeSinceStartup - time;
+
+            time = Time.realtimeSinceStartup;
+            compute.Dispatch(k_lookup, THREAD_BLOCKS, 1, 1);
+            request = AsyncGPUReadback.Request(b_inputOutput);
+            yield return new WaitUntil(() => request.done);
+            lookupTotalTime += Time.realtimeSinceStartup - time;
+
+            time = Time.realtimeSinceStartup;
+            compute.Dispatch(k_delete, THREAD_BLOCKS, 1, 1);
+            request = AsyncGPUReadback.Request(b_hash);
+            yield return new WaitUntil(() => request.done);
+            deletionTotalTime += Time.realtimeSinceStartup - time;
+
+            if (i == (inputSize / batchSizeForTiming))
+                Debug.Log("Running");
+        }
+
+        Debug.Log("Done");
+        Debug.Log("Insertion average time:  " + inputSize * (batchSizeForTiming / insertTotalTime) + " elements/sec.");
+        Debug.Log("Lookup average time:  " + inputSize * (batchSizeForTiming / lookupTotalTime) + " elements/sec.");
+        Debug.Log("Insertion average time:  " + inputSize * (batchSizeForTiming / deletionTotalTime) + " elements/sec.");
+    }
+
     private int SizeToPow(int size)
     {
         size--;
-
-        int counter = 0;
+        int counter = 1;
         while (size > 0)
         {
             size >>= 1;
-            counter++;
+            counter <<= 1;
         }
-
-        return (int)Mathf.Pow(2, counter);
+        return counter;
     }
-
-    IEnumerator debug()
+    private void OnDisable()
     {
-        GetDebugData();
-
-        yield return new WaitForSeconds(1);
-
-        GetDebugData();
-
-        yield return new WaitForSeconds(1);
-
-        GetDebugData();
-    }
-
-    private void GetDebugData()
-    {
-        Debug.Log("running!");
-
-        test3 = new uint[hashBufferSize * 2];
-        hashBuffer.GetData(test3);
-
-
-        //If deletion was performed properly, test3[] should always equal the sentinel value, 0xffffffff
-        //there appears to be a bug
-        for (int i = 1; i < test3.Length; i += 2)
-        {
-            if (test3[i] != 0xffffffff)
-            {
-                Debug.Log("Deletion error at " + i);
-            }
-        }
-    }
-
-    IEnumerator AsyncDebug()
-    {
-        NativeArray<uint> test4 = new NativeArray<uint>(hashBufferSize * 2, Allocator.Persistent);
-
-        var request = AsyncGPUReadback.Request(hashBuffer);
-        yield return new WaitUntil(() => request.done);
-
-        test4 = request.GetData<uint>();
-
-        for (int i = 1; i < test4.Length; i+=2)
-        {
-            if (test4[i] != 0xffffffff)
-            {
-                Debug.Log("Deletion error at " + i);
-            }
-        }
-
-        test4.Dispose();
-    }
-
-    IEnumerator Timing(int timingCase)
-    {
-        if (timingCase == 0)
-        {
-            var request = AsyncGPUReadback.Request(valuesBuffer);
-            yield return new WaitUntil(() => request.done);
-            Debug.Log("Insertion time for " + bufferSize + " random numbers: " + (Time.realtimeSinceStartup - time) + ".      " + ((1f / (Time.realtimeSinceStartup - time)) * bufferSize) + " keys/sec");
-        }
-
-        if (timingCase == 1)
-        {
-            var request = AsyncGPUReadback.Request(valuesBuffer);
-            yield return new WaitUntil(() => request.done);
-            Debug.Log("Lookup time for " + bufferSize + " random numbers: " + (Time.realtimeSinceStartup - time) + ".      " + ((1f / (Time.realtimeSinceStartup - time)) * bufferSize) + " keys/sec");
-        }
-
-        if (timingCase == 2)
-        {
-            var request = AsyncGPUReadback.Request(hashBuffer);
-            yield return new WaitUntil(() => request.done);
-            Debug.Log("Deletion time for " + bufferSize + " random numbers: " + (Time.realtimeSinceStartup - time) + ".      " + ((1f / (Time.realtimeSinceStartup - time)) * bufferSize) + " keys/sec");
-        }
-
+        b_inputOutput.Release();
+        b_hash.Release();
     }
 }
